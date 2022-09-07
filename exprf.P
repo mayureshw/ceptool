@@ -1,0 +1,118 @@
+:-import
+    member/2
+    from lists.
+
+:-import
+    str_cat
+    from string.
+
+:-import
+    join_/2,
+    join/2,
+    map/3,
+    dquote/2
+    from utils.
+
+:-import
+    unparse/1
+    from unparsecpp.
+
+%%%%%%%%%% Type specification %%%%%%%%%%
+
+types([
+    int, float, string, bool
+    ]).
+
+numerics([
+    int, float
+    ]).
+
+aggregators([
+    'CEPCount'
+    ]).
+
+% Supported functor, the C++ class they map to and their arity
+functormap([
+    ( ^  , 'CEPXor'   , 2 ),
+    ( == , 'CEPEq'    , 2 ),
+    ( #  , 'CEPCount' , 1 )
+    ]).
+
+% For a class, supported argument types
+signature('CEPXor',   [ bool, bool ]).
+signature('CEPEq',    [ N1, N2 ]) :- comparable(N1, N2).
+signature('CEPCount', [ int ]).
+
+% For a class, the template signature to instantiate, by default it is same as
+% the signature. Specified separately where different from the default.
+template('CEPCount', _, []) :- !.
+template(_, Sig, Sig).
+
+%%%%%%%%%% No class/type/functor names should appear below this %%%%%%%%%%
+
+%%% Derived relations getting rid of the lists (which are used for convenience above)
+:-table type/1.
+type(T) :- types(Ts), member(T, Ts).
+
+:-table numeric/1.
+numeric(T) :- numerics(Ts), member(T, Ts).
+
+:-table class/2.
+class(C, A) :- functormap(M), member((_,C,A), M).
+
+:-table opclass/2.
+opclass(T, C) :- functormap(M), member((T,C,_), M).
+
+:-table aggregator/1.
+aggregator(C) :- aggregators(Cs), member(C, Cs).
+
+%%% Support predicates
+
+% A type is comparable with itself. A numeric type is comparable with a numeric type
+:-table comparable/2.
+comparable(T, T):- type(T).
+comparable(T1, T2):- numeric(T1), numeric(T2).
+
+suf_(T, TSuf) :- str_cat(T, '__', TSuf).
+suf_L(L, Lsuf) :- map(L, (A,B,suf_(A,B)), Lsuf).
+
+%%%%%%%%%% C++ construct derivations %%%%%%%%%
+
+
+etyp(TSuf):- type(T), suf_(T, TSuf).
+
+% Capture variables for map, _router for aggregators, none otherwise
+caps(C, ['this']) :- aggregator(C), !.
+caps(_, []).
+
+% Aggregators take _router and argv as arguments, rest only argv
+newargs(C, ['this->_router', argv]) :- aggregator(C), !.
+newargs(_, [argv]).
+
+targmapv( C, Sig, lambda(Caps, 'LRET', ['LARG'], [Stmt]) ) :-
+    caps(C, Caps),
+    template(C, Sig, Targs),
+    CTyp = typ(C, Targs, ''),
+    newargs(C, Newargs),
+    Stmt = stmt(ret(new(CTyp,Newargs))).
+    
+
+targmapk( F, C, br([ str(F), br(Argsig)  ]), Sig ) :- signature(C, Sig), suf_L(Sig, Argsig).
+targmapkv( br([K, V]) ) :- opclass(F, C), targmapk(F, C, K, Sig), targmapv(C, Sig, V).
+
+cpp(def('ETYPENUM',br(L))) :- findall(TSuf, etyp(TSuf), L1), sort(L1, L).
+cpp(def('LRET',typ('ExprBase',[],'*'))).
+cpp(def('LARG',tv(typ(vector,[typ('ExprBase',[],'*')],'&'), [argv]))).
+
+targmap(br(L)) :- findall(V, targmapkv(V), L).
+
+cpp(def('TARGMAP',Cpp)) :- targmap(Cpp).
+
+%%%%%%%%%% Test driver %%%%%%%%%%
+
+%:-signature(Op, T), writeln(signature(Op,T)), fail.
+%:-class(C,_), template(C, T), writeln(template(C,T)), fail.
+%:-class(C,_), newargs(C,NA), writeln(newargs(C,NA)), fail.
+%:-class(C,_), targmapv(C,CPP), writeln(targmapv(C,CPP)), fail.
+%:-opclass(Op,C), writeln(opclass(Op,C)), fail.
+:-cpp(CPP), unparse(CPP), fail.

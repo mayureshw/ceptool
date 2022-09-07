@@ -1,0 +1,24 @@
+% Pattern A -> B implies event B depends on event A such that:
+%
+%   - A must occur before first occurrence of B
+%
+%   - After first occurrence of A, it can recur only after B has occurred
+%     exactly once
+%
+%   - After first occurrence of B, it can recur only after A has occurred
+%     exactly once
+
+dep( 1 -> 2 ).
+
+
+% Similar to above example. Just that in pattern A -> B,  A is an Exclusive Or
+% of events i.e. exactly 1 of them should occur. Note that ^ has higher
+% precedence than ->.
+
+dep( 3 ^ 4 -> 5 ).
+
+
+% Similar to above example. Just that, in pattern A -> B, here B uses Exclusive
+% Or of events.
+
+dep( 6 -> 7 ^ 8 ).

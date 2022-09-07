@@ -1,0 +1,94 @@
+:-export unparse/1.
+
+:-import
+    term_to_atom/2
+    from string.
+
+:-import
+    dquote/2,
+    join/2,
+    joincomma/2,
+    map/3
+    from utils.
+
+%%%%%%%%%% Support predicates %%%%%%%%%
+
+wrapl(L, Open, Close, Str) :- map(L, (A,B,cppstr(A,B)), Lstr), joincomma(Lstr, Lstr1),  join([Open, ' ', Lstr1, ' ', Close], Str).
+wrapl_brace(L, Str) :- wrapl(L, '{', '}', Str).
+wrapl_sqrb(L, Str) :- wrapl(L, '[', ']', Str).
+wrapl_paren(L, Str) :- wrapl(L, '(', ')', Str).
+wrapl_angle([], '') :- !.
+wrapl_angle(L, Str) :- wrapl(L, '<', '>', Str).
+wrapl_none(L, Str) :- wrapl(L, ' ', '', Str).
+
+%%%%%%%%%% cppstr %%%%%%%%%
+
+% atomic (strings/numbers) are never top level, but this rule may trigger due to recursive nature of cppstr
+cppstr( A, Str ) :- atomic(A), !, term_to_atom(A, Str).
+
+% str(S) translates to a double quoted string
+cppstr( str(S), Str ) :- !, dquote(S, Str).
+
+% Type. If Targs is empty, it will be treated as non template Mod is expected
+% to be *, &, or '' (check not enforced)
+cppstr(typ(T, Targs, Mod), Str) :- !, wrapl_angle(Targs, Targsstr), join([T, Targsstr, Mod], Str).
+
+% Function type, translates to Retyp(Argtyps..)
+cppstr( ftyp(Retyp, Argtyps), Str ) :- !, cppstr(Retyp, Retypstr), wrapl_paren(Argtyps, Argtypstr), join([ Retypstr, ' ', Argtypstr ], Str).
+
+% brace initializer, wrapped in {} (ingredients of L can be fccs, e.g. leading to nested braced values
+cppstr(br(L), Str) :- !, wrapl_brace( L , Str).
+
+
+% typedef Typexpr as Typ
+cppstr( typdef(Typ, Typexpr), Str ) :- !, cppstr(Typexpr, Typexprstr),
+    join([ 'typedef ', Typexprstr, ' ', Typ ], Str).
+
+% enumeration of list values E
+cppstr( enum(E), Str ) :- !, wrapl_brace(E, Estr), join(['enum ', Estr], Str).
+
+% #define Macro to Cpp's string representation
+cppstr( def(Macro,Cpp), Str ) :- !, cppstr(Cpp, Cppstr),  join(['#define ', Macro, ' ', Cppstr ], Str).
+
+% Mere addition of a trailing ; to the cppstr of Cpp
+cppstr( stmt(Cpp), Str ) :- !, cppstr(Cpp, Str1), join([Str1, ';'], Str).
+
+% return E
+cppstr( ret(E) , Str ) :- !, cppstr(E, EStr), join( [ 'return ', EStr ], Str ).
+
+% new E(Args)
+cppstr( new(E, Args) , Str ) :- !, cppstr(E, EStr), wrapl_paren(Args, Argstr),
+    join( [ 'new ',  EStr, Argstr ], Str ).
+
+% type-values pair (such as required in formal/local/member decln
+cppstr( tv(T, Vs), Str ) :- !, cppstr(T, Tstr), wrapl_none(Vs, Vstr), join([Tstr, Vstr], Str).
+
+% Lambda expression: [ Caps... ] Retyp ( Params... ) { Stmts... }
+cppstr( lambda(Caps, Retyp, Params, Stmts), Str ) :- !, wrapl_sqrb(Caps, Capstr),
+    cppstr(Retyp, Retypstr), wrapl_paren(Params, Paramstr), wrapl_brace(Stmts, Stmtstr),
+    join([ Capstr, ' ', Paramstr, ' -> ', Retypstr, ' ', Stmtstr ], Str).
+
+% Comma separated fccs
+cppstr( csv(L), Str ) :- !, wrapl_none(L, Str).
+
+%%%%%%%%%% unparse : write to stdout cppstr for given Cpp %%%%%%%%%
+
+unparse(Cpp) :- cppstr(Cpp, Cppstr), writeln(Cppstr).
+
+%%%%%%%%%% Test driver %%%%%%%%%
+%tc( a ).
+%tc( str(a) ).
+%tc( typ('C',[],'') ).
+%tc( typ('C',[],'*') ).
+%tc( typ('vector',[int],'&') ).
+%tc( typ('map',[typ(vector,[typ('ExprBase',[],'*')],''),'Etyp'],'') ).
+%tc( ftyp( int, [ float, string ] ) ).
+%tc( br([ 1, br([2,3,4]) ]) ).
+%tc( enum([mon,tue,wed]) ).
+%tc( typdef(mymap, typ(map,[int, string],'') ) ).
+%tc( def('MYVAL',br([1,2,3]) ) ).
+%tc( ret(10) ).
+%tc( stmt( ret(new('C', [])) ) ).
+%tc( lambda( ['_router'], typ('ExprBase',[],'*'), [], [stmt(ret(new( typ('Expr',[int, int],''), [argv])))] )).
+%
+%:- tc(Cpp), writeln(Cpp), unparse(Cpp), nl, fail.

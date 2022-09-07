@@ -1,0 +1,36 @@
+:-export
+    joincomma/2,
+    joinsemicolon/2,
+    dquote/2,
+    join/2,
+    join_/2,
+    map/3,
+    seplist/3,
+    writePred/3.
+
+seplist([], _, '') :- !.
+seplist([E], _, E) :- !.
+seplist([E|Rest], Sep, SepL) :- str_cat(E,Sep,ESep), seplist(Rest,Sep,RestSep), str_cat(ESep,RestSep,SepL).
+
+joincomma(L, SepL) :- seplist(L, ', ', SepL).
+joinsemicolon(L, SepL) :- seplist(L, '; ', SepL).
+join_(L, SepL) :- seplist(L, '_', SepL).
+join(L, SepL) :- seplist(L, '', SepL).
+
+dquote(S, Str) :- join([ '"', S, '"' ], Str).
+
+map([],_,[]):-!.
+map([E1|Rest],(Ein,Eout,Cb),[Eout|Lout]):-
+        copy_term((Ein,Eout,Cb),Cb1),
+        Ein=E1,
+        Cb,
+        map(Rest,Cb1,Lout).
+
+writePred(T,P,F) :-
+    tell(F),
+    P,
+    write_canonical(T),
+    writeln('.'),
+    fail.
+    
+writePred(_,_,_) :- told.
