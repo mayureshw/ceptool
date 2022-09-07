@@ -22,8 +22,23 @@ The properties can be specified in one of the two formats:
     to express them. A detailed knowledge of Prolog language is not a
     requirement to write and understand these specs.
 
-    See examples/depdat and examples/cepdat for sample DEP and CEP
-    specifications.
+    See examples/depdat for sample DEP format and its explanation.
+
+    A later section describes its conversion to the CEP format. The CEP format looks like:
+
+        cep( Interval, Condition ).
+        ...
+
+        where Interval is a tuple of ( StartEvent, EndEvent )
+        Start and End events are integers that identify the event types.  A
+        special symbol 'START' represents a symbolic event which is deemed as
+        happening strictly before any other event occurs.
+
+        Conditional expression supports following operators:
+
+        #E : Number of occurrences of event E in the interval
+        ^  : Logical Xor
+        == : Equality
 
 ## System requirements
 
