@@ -1,4 +1,4 @@
-PFILES		=	utils dep2cep
+PFILES		=	dep2cep  exprf  unparsecpp  utils
 XWAMFILES	=	$(addsuffix .xwam, $(PFILES))
 
 %.xwam: %.P
