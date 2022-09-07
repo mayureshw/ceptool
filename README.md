@@ -103,3 +103,11 @@ The properties can be specified in one of the two formats:
 
     As of now, the goal is to establish the framework and the flow. A very
     small number of operators are supported. The operators will grow over time.
+
+    May consider adding event instance id which can help report the exact part
+    of the event stream where the property was violated.
+
+    May support naming the intervals, so that abstract events can be formed
+    hierarchically.
+
+    May add Action spec to elaborate the reporting.
