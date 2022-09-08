@@ -1,7 +1,7 @@
 ifndef _CEPTOOL_
 _CEPTOOL_ = 1
 
-CPPFLAGS	+=	-I$(CEPTOOLDIR)
+CXXFLAGS	+=	-I$(CEPTOOLDIR)
 
 include $(XSBCPPIFDIR)/Makefile.xsbcppif
 
