@@ -16,5 +16,5 @@ int main()
         cout << "Sending event " << e << endl;
         inmgr.route(e);
     }
-
+    cout << "Generated: cep.log" << endl;
 }
