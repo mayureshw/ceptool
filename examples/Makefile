@@ -1,6 +1,11 @@
 %.out:	%.cpp
 	$(CXX) $(CXXFLAGS) $(LDFLAGS)  $< -o $@
 
-all:	example.out
+BINS	= example.out
+
+all:	$(BINS)
+
+clean:
+	rm -f $(BINS)
 
 include $(CEPTOOLDIR)/Makefile.ceptool
