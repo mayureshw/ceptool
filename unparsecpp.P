@@ -39,7 +39,6 @@ cppstr( ftyp(Retyp, Argtyps), Str ) :- !, cppstr(Retyp, Retypstr), wrapl_paren(A
 % brace initializer, wrapped in {} (ingredients of L can be fccs, e.g. leading to nested braced values
 cppstr(br(L), Str) :- !, wrapl_brace( L , Str).
 
-
 % typedef Typexpr as Typ
 cppstr( typdef(Typ, Typexpr), Str ) :- !, cppstr(Typexpr, Typexprstr),
     join([ 'typedef ', Typexprstr, ' ', Typ ], Str).
@@ -70,6 +69,11 @@ cppstr( lambda(Caps, Retyp, Params, Stmts), Str ) :- !, wrapl_sqrb(Caps, Capstr)
 
 % Comma separated fccs
 cppstr( csv(L), Str ) :- !, wrapl_none(L, Str).
+
+% Call expression Fn<Targs>(Args)
+cppstr( call(Fn, Targs, Args), Str ) :- !,
+    cppstr(Fn, Fnstr), wrapl_angle(Targs, Targsstr), wrapl_paren(Args, Argstr),
+    join([ Fnstr, Targsstr, Argstr ], Str).
 
 %%%%%%%%%% unparse : write to stdout cppstr for given Cpp %%%%%%%%%
 
