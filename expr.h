@@ -128,7 +128,7 @@ class ExprFactory
 {
     EventRouter& _router;
     vector<ExprBase*> _exprv;
-    map< pair<string,vector<Etyp>>, function< ExprBase*(vector<ExprBase*>&) > > _targmap = TARGMAP;
+    const map< pair<string,vector<Etyp>>, function< ExprBase*(vector<ExprBase*>&) > > _targmap = TARGMAP;
     ExprBase* _pterm2expr(PTerm* pterm)
     {
         if ( pterm->isAtom() )
