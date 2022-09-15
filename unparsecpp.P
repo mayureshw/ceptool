@@ -75,6 +75,11 @@ cppstr( call(Fn, Targs, Args), Str ) :- !,
     cppstr(Fn, Fnstr), wrapl_angle(Targs, Targsstr), wrapl_paren(Args, Argstr),
     join([ Fnstr, Targsstr, Argstr ], Str).
 
+% function pointer &Fn<Targs>
+cppstr( fptr(Fn,Targs), Str ) :- !,
+    cppstr(Fn, Fnstr), wrapl_angle(Targs, Targsstr),
+    join([ '&', Fnstr, Targsstr ], Str).
+
 %%%%%%%%%% unparse : write to stdout cppstr for given Cpp %%%%%%%%%
 
 unparse(Cpp) :- cppstr(Cpp, Cppstr), writeln(Cppstr).
