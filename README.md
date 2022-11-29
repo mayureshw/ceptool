@@ -81,12 +81,7 @@ The properties can be specified in one of the two formats:
 
 ## Converting DEP format to CEP
 
-    Shell script $CEPTOOLDIR/dep2cep converts a DEP formatted file to CEP
-    format.
-
-    E.g.
-        $CEPTOOLDIR/dep2cep $CEPTOOLDIR/examples/depdat ./cepdat
-
+    There is a Prolog API to convert dep representation to cep. See dep2cep.P
 
 ## Checking event properties specified in a CEP file on a stream of events
 
