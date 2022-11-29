@@ -11,10 +11,10 @@
 typedef enum { START = INT8_MIN } SymEvent;
 #define SYME(E) { #E, E }
 
-static ofstream ceplog("cep.log");
 
 class Interval
 {
+    ofstream& _ceplog;
     Event _start, _end;
     BoolExpr *_condexpr;
     vector<VoidExpr*> _actions;
@@ -55,14 +55,14 @@ protected:
     {
         bool condeval = _condexpr->eval();
         if ( condeval ) return;
-        ceplog << "Endof " << intervalstr() << " " << _condexpr->str() << " = " << condeval << endl;
+        _ceplog << "Endof " << intervalstr() << " " << _condexpr->str() << " = " << condeval << endl;
         for(auto aggr:_aggrHandlers)
-            ceplog << "\t" << aggr->str() << " = " << aggr->eval2str() << endl;
+            _ceplog << "\t" << aggr->str() << " = " << aggr->eval2str() << endl;
     }
 public:
     void init() { init_(); }
-    Interval(Event start, Event end, BoolExpr* condexpr, EventRouter& router) :
-        _start(start), _end(end), _condexpr(condexpr),
+    Interval(ofstream& ceplog, Event start, Event end, BoolExpr* condexpr, EventRouter& router) :
+        _ceplog(ceplog), _start(start), _end(end), _condexpr(condexpr),
         _startHandler(router, start, [this](Event e){this->handleStart(e);}),
         _endHandler(router, end, [this](Event e){this->handleEnd(e);})
     {
@@ -103,10 +103,11 @@ protected:
     void handleEnd_(Event e) { _startHandler.start(); stopInterval(); }
 };
 
-#define NEWINTERVAL(TYP) (Interval*) new TYP(estrt, eend, condexpr, _router)
+#define NEWINTERVAL(TYP) (Interval*) new TYP(_ceplog, estrt, eend, condexpr, _router)
 
 class IntervalManager
 {
+    ofstream _ceplog;
     EventRouter _router;
     ExprFactory _efactory = {_router};
     vector<Interval*> _interv;
@@ -160,8 +161,9 @@ class IntervalManager
     }
 public:
     void route(Event e) { _router.route(e); }
-    IntervalManager(string cepdatflnm)
+    IntervalManager(string cepdatflnm, string ceplogflnm = "cep.log")
     {
+        _ceplog.open(ceplogflnm);
         PDb pdb;
         t_predspec cep2 = {"cep",2};
         pdb.load(cepdatflnm, {cep2} );
