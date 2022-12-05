@@ -9,6 +9,10 @@
 
 // Note: Avoid run-time interpretation of etyp. This is only for
 // construction-time convenience
+//
+// Note: Expr classes whose template signature is derived from their arg types
+// do not require arity validation. Rest of the classes should validate arity
+// in their constructor.
 #define TYP2ETYP(TYP) if constexpr ( is_same<T,TYP>::value ) return TYP##__
 
 typedef enum ETYPENUM Etyp;
@@ -24,6 +28,7 @@ public:
     // Aggregator methods. They are here because aggregator is template
     // Giving a non-template aggregator base class results in complex MI pattern, not worth it
     virtual bool isAggregator() { return false; }
+    virtual bool isStatevar() { return false; }
     virtual void reset() {}
     virtual void start() {}
     virtual void stop() {}
@@ -34,6 +39,11 @@ public:
     {
         if ( isAggregator() ) aggrv.push_back(this);
         else for(auto arg:_args) arg->aggregators(aggrv);
+    }
+    void statevars(vector<ExprBase*>& statev)
+    {
+        if ( isStatevar() ) statev.push_back(this);
+        else for(auto arg:_args) arg->statevars(statev);
     }
     ExprBase(vector<ExprBase*> args = {}) : _args(args) {}
 };
@@ -121,6 +131,24 @@ public:
     CEPCount(EventRouter& router, vector<ExprBase*> argv) : Aggregator<int>(router, ARGEVENT), _e(ARGEVENT) {}
 };
 
+template <typename T> class CEPReg : public Expr<T>
+{
+    T tmpval = 121; //TEMP
+    T *stateptr = &tmpval;
+public:
+    virtual bool isStatevar() { return true; }
+    string str() { return "*(" + this->_args[0]->str() + "," + this->_args[1]->str() + ")"; }
+    T eval() { return tmpval; }
+    CEPReg(vector<ExprBase*> args) : Expr<T>(args)
+    {
+        if ( args.size() != 2 )
+        {
+            cout << "Operator * has arity 2, got:" << args.size() << endl;
+            exit(1);
+        }
+    }
+};
+
 #define PTERM2ATOM(TYP) new Const<TYP>(AS(TYP,pterm))
 
 // TODO manager pointers, may be store and delete them in the end
@@ -129,6 +157,14 @@ class ExprFactory
     EventRouter& _router;
     vector<ExprBase*> _exprv;
     const map< pair<string,vector<Etyp>>, function< ExprBase*(vector<ExprBase*>&) > > _targmap = TARGMAP;
+    void inferTemplateTyps(string functor, vector<ExprBase*>& argv, vector<Etyp>& argtpv)
+    {
+        // For CEPReg template argument depends on the type of state variable
+        if ( functor == "*" ) argtpv.push_back( int__ ); // TODO: Derive from DPE
+
+        // In most cases template args are simply the types of arguments, hence the default
+        else for(auto arg:argv) argtpv.push_back(arg->etyp());
+    }
     ExprBase* _pterm2expr(PTerm* pterm)
     {
         if ( pterm->isAtom() )
@@ -154,11 +190,11 @@ class ExprFactory
             vector<ExprBase*> argv;
             for(auto arg:args) argv.push_back(pterm2expr(arg));
             vector<Etyp> argtpv;
-            for(auto arg:argv) argtpv.push_back(arg->etyp());
+            inferTemplateTyps(functor, argv, argtpv);
             auto it = _targmap.find( {functor, argtpv} );
             if ( it == _targmap.end() )
             {
-                cout << "No method to convert functor " << functor << " argtyps ";
+                cout << "No method to convert functor: " << functor << " argtyps: ";
                 for(auto typ:argtpv) cout << typ << " ";
                 cout << endl;
                 exit(1);

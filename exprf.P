@@ -35,13 +35,15 @@ aggregators([
 functormap([
     ( ^  , 'CEPXor'   , 2 ),
     ( == , 'CEPEq'    , 2 ),
-    ( #  , 'CEPCount' , 1 )
+    ( #  , 'CEPCount' , 1 ),
+    ( *  , 'CEPReg'   , 1 )
     ]).
 
 % For a class, supported argument types
 signature('CEPXor',   [ bool, bool ]).
 signature('CEPEq',    [ N1, N2 ]) :- comparable(N1, N2).
 signature('CEPCount', [ int ]).
+signature('CEPReg',   [ N ]) :- numeric(N).
 
 % For a class, the template signature to instantiate, by default it is same as
 % the signature. Specified separately where different from the default.

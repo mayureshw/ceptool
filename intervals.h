@@ -19,6 +19,7 @@ class Interval
     BoolExpr *_condexpr;
     vector<VoidExpr*> _actions;
     vector<ExprBase*> _aggrHandlers;
+    vector<ExprBase*> _statevars;
     // Common handlers for all interval types, in turn call subtype's handler
     void handleStart(Event e) { handleStart_(e); }
     void handleEnd(Event e)
@@ -58,6 +59,8 @@ protected:
         _ceplog << "Endof " << intervalstr() << " " << _condexpr->str() << " = " << condeval << endl;
         for(auto aggr:_aggrHandlers)
             _ceplog << "\t" << aggr->str() << " = " << aggr->eval2str() << endl;
+        for(auto sv:_statevars)
+            _ceplog << "\t" << sv->str() << " = " << sv->eval2str() << endl;
     }
 public:
     void init() { init_(); }
@@ -67,6 +70,7 @@ public:
         _endHandler(router, end, [this](Event e){this->handleEnd(e);})
     {
         _condexpr->aggregators( _aggrHandlers );
+        _condexpr->statevars( _statevars );
     }
 };
 
