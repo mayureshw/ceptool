@@ -161,8 +161,10 @@ class IntervalManager
     }
 public:
     void route(Event e) { _router.route(e); }
-    IntervalManager(string cepdatflnm, string ceplogflnm = "cep.log")
+    IntervalManager(string basename)
     {
+        string ceplogflnm = basename + ".cep.log";
+        string cepdatflnm = basename + ".cep";
         _ceplog.open(ceplogflnm);
         PDb pdb;
         t_predspec cep2 = {"cep",2};
