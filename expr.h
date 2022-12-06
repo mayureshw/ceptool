@@ -6,6 +6,7 @@
 #include "xsb2cpp.h"
 #include "eventhandler.h"
 #include "exprf.h"
+#include "stateif.h"
 
 // Note: Avoid run-time interpretation of etyp. This is only for
 // construction-time convenience
@@ -14,8 +15,6 @@
 // do not require arity validation. Rest of the classes should validate arity
 // in their constructor.
 #define TYP2ETYP(TYP) if constexpr ( is_same<T,TYP>::value ) return TYP##__
-
-typedef enum ETYPENUM Etyp;
 
 class ExprBase
 {
@@ -67,6 +66,8 @@ public:
         TYP2ETYP(int);
         TYP2ETYP(float);
         TYP2ETYP(bool);
+        cout << "Unknown expression type for: " << str() << endl;
+        exit(1);
     }
 };
 
