@@ -35,6 +35,10 @@ aggregators([
     'CEPCount'
     ]).
 
+stateexprs([
+    'CEPReg'
+    ]).
+
 % Supported functor, the C++ class they map to and their arity
 functormap([
     ( ^  , 'CEPXor'   , 2 ),
@@ -72,6 +76,9 @@ opclass(T, C) :- functormap(M), member((T,C,_), M).
 :-table aggregator/1.
 aggregator(C) :- aggregators(Cs), member(C, Cs).
 
+:-table stateexpr/1.
+stateexpr(C) :- stateexprs(Cs), member(C, Cs).
+
 %%% Support predicates
 
 % A type is comparable with itself. A numeric type is comparable with a numeric type
@@ -89,10 +96,13 @@ etyp(TSuf):- type(T), suf_(T, TSuf).
 
 % Capture variables for map, _router for aggregators, none otherwise
 caps(C, ['this']) :- aggregator(C), !.
+caps(C, ['this']) :- stateexpr(C), !.
 caps(_, []).
 
 % Aggregators take _router and argv as arguments, rest only argv
 newargs(C, ['this->_router', argv]) :- aggregator(C), !.
+% State expressions take stateif as extra argument
+newargs(C, ['this->_stateif', argv]) :- stateexpr(C), !.
 newargs(_, [argv]).
 
 targmapv( C, Sig, lambda(Caps, 'LRET', ['LARG'], [Stmt]) ) :-

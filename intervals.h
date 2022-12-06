@@ -111,9 +111,10 @@ protected:
 
 class IntervalManager
 {
+    CEPStateIf *_stateif;
     ofstream _ceplog;
     EventRouter _router;
-    ExprFactory _efactory = {_router};
+    ExprFactory _efactory = {_router, _stateif};
     vector<Interval*> _interv;
     const map<string,SymEvent> _symevents =
         {
@@ -165,7 +166,7 @@ class IntervalManager
     }
 public:
     void route(Event e) { _router.route(e); }
-    IntervalManager(string basename)
+    IntervalManager(string basename, CEPStateIf* stateif) : _stateif(stateif)
     {
         string ceplogflnm = basename + ".cep.log";
         string cepdatflnm = basename + ".cep";

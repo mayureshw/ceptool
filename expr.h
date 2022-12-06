@@ -134,19 +134,21 @@ public:
 
 template <typename T> class CEPReg : public Expr<T>
 {
-    T tmpval = 121; //TEMP
-    T *stateptr = &tmpval;
+    vector<int> _stateidv;
+    T *_stateptr;
 public:
     virtual bool isStatevar() { return true; }
     string str() { return "*(" + this->_args[0]->str() + "," + this->_args[1]->str() + ")"; }
-    T eval() { return tmpval; }
-    CEPReg(vector<ExprBase*> args) : Expr<T>(args)
+    T eval() { return *_stateptr; }
+    CEPReg(CEPStateIf *stateif, vector<ExprBase*> args) : Expr<T>(args)
     {
         if ( args.size() != 2 )
         {
             cout << "Operator * has arity 2, got:" << args.size() << endl;
             exit(1);
         }
+        for(auto a:args) _stateidv.push_back( ((Expr<int>*)a)->eval() );
+        _stateptr = (T*) stateif->getStatePtr(_stateidv);
     }
 };
 
@@ -155,6 +157,7 @@ public:
 // TODO manager pointers, may be store and delete them in the end
 class ExprFactory
 {
+    CEPStateIf *_stateif;
     EventRouter& _router;
     vector<ExprBase*> _exprv;
     const map< pair<string,vector<Etyp>>, function< ExprBase*(vector<ExprBase*>&) > > _targmap = TARGMAP;
@@ -211,7 +214,7 @@ public:
         _exprv.push_back(expr);
         return expr;
     }
-    ExprFactory(EventRouter& router) : _router(router) {}
+    ExprFactory(EventRouter& router, CEPStateIf *stateif) : _router(router), _stateif(stateif) {}
     ~ExprFactory() { for(auto e:_exprv) delete e; }
 };
 
