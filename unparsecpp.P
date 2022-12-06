@@ -80,6 +80,11 @@ cppstr( fptr(Fn,Targs), Str ) :- !,
     cppstr(Fn, Fnstr), wrapl_angle(Targs, Targsstr),
     join([ '&', Fnstr, Targsstr ], Str).
 
+% header guard for stem H
+cppstr( hguard(H), Str ) :- !,
+    join([ '_', H, '_H' ], Guard),
+    join([ '#ifndef ', Guard, '\n', '#define ', Guard ], Str).
+
 %%%%%%%%%% unparse : write to stdout cppstr for given Cpp %%%%%%%%%
 
 unparse(Cpp) :- cppstr(Cpp, Cppstr), writeln(Cppstr).
