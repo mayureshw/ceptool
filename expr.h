@@ -65,7 +65,12 @@ public:
         TYP2ETYP(string);
         TYP2ETYP(int);
         TYP2ETYP(float);
+        TYP2ETYP(double);
         TYP2ETYP(bool);
+        TYP2ETYP(uint8_t);
+        TYP2ETYP(uint16_t);
+        TYP2ETYP(uint32_t);
+        TYP2ETYP(uint64_t);
         cout << "Unknown expression type for: " << str() << endl;
         exit(1);
     }
@@ -134,7 +139,6 @@ public:
 
 template <typename T> class CEPReg : public Expr<T>
 {
-    vector<int> _stateidv;
     T *_stateptr;
 public:
     virtual bool isStatevar() { return true; }
@@ -147,8 +151,9 @@ public:
             cout << "Operator * has arity 2, got:" << args.size() << endl;
             exit(1);
         }
-        for(auto a:args) _stateidv.push_back( ((Expr<int>*)a)->eval() );
-        _stateptr = (T*) stateif->getStatePtr(_stateidv);
+        vector<int> stateidv;
+        for(auto a:args) stateidv.push_back( ((Expr<int>*)a)->eval() );
+        _stateptr = (T*) stateif->getStatePtr(stateidv);
     }
 };
 
@@ -164,7 +169,12 @@ class ExprFactory
     void inferTemplateTyps(string functor, vector<ExprBase*>& argv, vector<Etyp>& argtpv)
     {
         // For CEPReg template argument depends on the type of state variable
-        if ( functor == "*" ) argtpv.push_back( int__ ); // TODO: Derive from DPE
+        if ( functor == "*" )
+        {
+            vector<int> stateidv;
+            for(auto a:argv) stateidv.push_back( ((Expr<int>*)a)->eval() );
+            argtpv.push_back( _stateif->getStateTyp(stateidv) );
+        }
 
         // In most cases template args are simply the types of arguments, hence the default
         else for(auto arg:argv) argtpv.push_back(arg->etyp());
