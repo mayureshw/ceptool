@@ -20,11 +20,15 @@
 %%%%%%%%%% Type specification %%%%%%%%%%
 
 types([
-    int, float, string, bool
+    bool,
+    int, int8_t, int16_t, int32_t, int64_t,
+    float, double,
+    string
     ]).
 
 numerics([
-    int, float
+    int, int8_t, int16_t, int32_t, int64_t,
+    float, double
     ]).
 
 aggregators([
@@ -102,13 +106,15 @@ targmapv( C, Sig, lambda(Caps, 'LRET', ['LARG'], [Stmt]) ) :-
 targmapk( F, C, br([ str(F), br(Argsig)  ]), Sig ) :- signature(C, Sig), suf_L(Sig, Argsig).
 targmapkv( br([K, V]) ) :- opclass(F, C), targmapk(F, C, K, Sig), targmapv(C, Sig, V).
 
-cpp(def('ETYPENUM',br(L))) :- findall(TSuf, etyp(TSuf), L1), sort(L1, L).
+cpp(hguard('EXPRF')).
+cpp(stmt(typdef('Etyp',enum(L)))) :- findall(TSuf, etyp(TSuf), L1), sort(L1, L).
 cpp(def('LRET',typ('ExprBase',[],'*'))).
 cpp(def('LARG',tv(typ(vector,[typ('ExprBase',[],'*')],'&'), [argv]))).
 
 targmap(br(L)) :- findall(V, targmapkv(V), L).
 
 cpp(def('TARGMAP',Cpp)) :- targmap(Cpp).
+cpp('#endif').
 
 %%%%%%%%%% Test driver %%%%%%%%%%
 
