@@ -16,6 +16,21 @@
 // in their constructor.
 #define TYP2ETYP(TYP) if constexpr ( is_same<T,TYP>::value ) return TYP##__
 
+// Macro recommended for the implementor of stateif interface
+#define TYPES2ETYP \
+        TYP2ETYP(string); \
+        TYP2ETYP(int); \
+        TYP2ETYP(float); \
+        TYP2ETYP(double); \
+        TYP2ETYP(bool); \
+        TYP2ETYP(uint8_t); \
+        TYP2ETYP(uint16_t); \
+        TYP2ETYP(uint32_t); \
+        TYP2ETYP(uint64_t); \
+        cout << "Unknown expression type for: " << str() << endl; \
+        exit(1); \
+
+
 class ExprBase
 {
 protected:
@@ -60,20 +75,7 @@ public:
         if constexpr ( is_same<T,string>::value ) return eval();
         else return to_string(eval());
     }
-    Etyp etyp()
-    {
-        TYP2ETYP(string);
-        TYP2ETYP(int);
-        TYP2ETYP(float);
-        TYP2ETYP(double);
-        TYP2ETYP(bool);
-        TYP2ETYP(uint8_t);
-        TYP2ETYP(uint16_t);
-        TYP2ETYP(uint32_t);
-        TYP2ETYP(uint64_t);
-        cout << "Unknown expression type for: " << str() << endl;
-        exit(1);
-    }
+    Etyp etyp() { TYPES2ETYP }
 };
 
 template <typename T> class Aggregator : public Expr<T>
