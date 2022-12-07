@@ -299,7 +299,6 @@ public:
 };
 
 typedef Expr<bool> BoolExpr;
-typedef Expr<void> VoidExpr;
 
 
 #endif

@@ -17,7 +17,8 @@ class Interval
     ofstream& _ceplog;
     Event _start, _end;
     BoolExpr *_condexpr;
-    vector<VoidExpr*> _actions;
+    vector<Action*> _tacts;
+    vector<Action*> _facts;
     vector<ExprBase*> _aggrHandlers;
     vector<ExprBase*> _statevars;
     unsigned long _seqstart = 0;
@@ -75,8 +76,8 @@ protected:
     }
 public:
     void init() { init_(); }
-    Interval(ofstream& ceplog, Event start, Event end, BoolExpr* condexpr, EventRouter& router) :
-        _ceplog(ceplog), _start(start), _end(end), _condexpr(condexpr),
+    Interval(ofstream& ceplog, Event start, Event end, BoolExpr* condexpr, vector<Action*> tacts, vector<Action*> facts, EventRouter& router) :
+        _ceplog(ceplog), _start(start), _end(end), _condexpr(condexpr), _tacts(tacts), _facts(facts),
         _startHandler(router, start, [this](Event e, unsigned long eseqno){this->handleStart(e,eseqno);}),
         _endHandler(router, end, [this](Event e, unsigned long eseqno){this->handleEnd(e, eseqno);})
     {
@@ -118,7 +119,7 @@ protected:
     void handleEnd_(Event e) { _startHandler.start(); stopInterval(); }
 };
 
-#define NEWINTERVAL(TYP) (Interval*) new TYP(_ceplog, estrt, eend, condexpr, _router)
+#define NEWINTERVAL(TYP) (Interval*) new TYP(_ceplog, estrt, eend, condexpr, tacts, facts, _router)
 
 class IntervalManager
 {
@@ -161,7 +162,13 @@ class IntervalManager
         auto istrt = topargs[0]->args()[0];
         auto iend = topargs[0]->args()[1];
         auto exprterm = topargs[1];
+        auto tactslist = topargs[2];
+        auto factslist = topargs[2];
         auto condexpr = (BoolExpr*) _efactory.pterm2expr(exprterm);
+
+        vector<Action*> tacts, facts;
+        for(auto t:tactslist->args()) tacts.push_back( _efactory.pterm2action(t) );
+        for(auto t:factslist->args()) facts.push_back( _efactory.pterm2action(t) );
 
         int estrt = term2event(istrt);
         int eend = term2event(iend);
