@@ -125,7 +125,7 @@ class IntervalManager
     CEPStateIf *_stateif;
     ofstream _ceplog;
     EventRouter _router;
-    ExprFactory _efactory = {_router, _stateif};
+    ExprFactory _efactory = {_router, _stateif, _ceplog};
     vector<Interval*> _interv;
     const map<string,SymEvent> _symevents =
         {

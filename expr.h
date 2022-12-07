@@ -31,6 +31,7 @@
         exit(1); \
 
 
+////////// Expression classes //////////
 class ExprBase
 {
 protected:
@@ -61,7 +62,6 @@ public:
     }
     ExprBase(vector<ExprBase*> args = {}) : _args(args) {}
 };
-
 
 // NOTE: Wherever output type has to be decided basis input argument types,
 // consider using "using"
@@ -159,14 +159,60 @@ public:
     }
 };
 
+////////// Action classes //////////
+
+class Action
+{
+protected:
+    ofstream& _ceplog;
+    EventRouter& _router;
+public:
+    virtual void operator () () = 0;
+    Action(ofstream& ceplog, EventRouter& router) : _ceplog(ceplog), _router(router) {}
+};
+
+class LogAction : public Action
+{
+    string _msg;
+public:
+    void operator () ()
+    {
+    }
+    LogAction(ofstream& ceplog, EventRouter& router, vector<PTerm*>& logargs) : Action(ceplog,router)
+    {
+        if ( logargs.size() != 1 )
+        {
+            cout << "log expects 1 argument, got " << logargs.size() << endl;
+            exit(1);
+        }
+        _msg = logargs[0]->asString();
+    }
+};
+
+class EventAction : public Action
+{
+    Event _e;
+public:
+    void operator () ()
+    {
+    }
+    EventAction(ofstream& ceplog, EventRouter& router, vector<PTerm*>& eventargs) : Action(ceplog,router)
+    {
+    }
+};
+
 #define PTERM2ATOM(TYP) new Const<TYP>(AS(TYP,pterm))
+
+#define ACTIONMAP(FUNCTOR,CLASS) { #FUNCTOR , [this](vector<PTerm*>& v) { return new CLASS(_ceplog,_router,v); } }
 
 // TODO manager pointers, may be store and delete them in the end
 class ExprFactory
 {
+    ofstream& _ceplog;
     CEPStateIf *_stateif;
     EventRouter& _router;
     vector<ExprBase*> _exprv;
+    vector<Action*> _actionv;
     const map< pair<string,vector<Etyp>>, function< ExprBase*(vector<ExprBase*>&) > > _targmap = TARGMAP;
     void inferTemplateTyps(string functor, vector<ExprBase*>& argv, vector<Etyp>& argtpv)
     {
@@ -219,6 +265,11 @@ class ExprFactory
 
         }
     }
+    map<string,function<Action*(vector<PTerm*>&)>> _actionf =
+        {
+            ACTIONMAP(log,   LogAction),
+            ACTIONMAP(event, EventAction),
+        };
 public:
     ExprBase* pterm2expr(PTerm* pterm)
     {
@@ -226,8 +277,25 @@ public:
         _exprv.push_back(expr);
         return expr;
     }
-    ExprFactory(EventRouter& router, CEPStateIf *stateif) : _router(router), _stateif(stateif) {}
-    ~ExprFactory() { for(auto e:_exprv) delete e; }
+    Action* pterm2action(PTerm* pterm)
+    {
+        auto functor = pterm->functor();
+        auto it = _actionf.find(functor);
+        if ( it == _actionf.end() )
+        {
+            cout << "Unknown action type: " << functor << endl;
+            exit(1);
+        }
+        auto action = it->second(pterm->args());
+        _actionv.push_back(action);
+        return action;
+    }
+    ExprFactory(EventRouter& router, CEPStateIf *stateif, ofstream& ceplog) : _router(router), _stateif(stateif), _ceplog(ceplog) {}
+    ~ExprFactory()
+    {
+        for(auto e:_exprv) delete e;
+        for(auto a:_actionv) delete a;
+    }
 };
 
 typedef Expr<bool> BoolExpr;
