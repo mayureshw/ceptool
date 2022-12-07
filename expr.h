@@ -167,7 +167,7 @@ protected:
     ofstream& _ceplog;
     EventRouter& _router;
 public:
-    virtual void operator () () = 0;
+    virtual void act() = 0;
     Action(ofstream& ceplog, EventRouter& router) : _ceplog(ceplog), _router(router) {}
 };
 
@@ -175,8 +175,9 @@ class LogAction : public Action
 {
     string _msg;
 public:
-    void operator () ()
+    void act()
     {
+        _ceplog << _msg << endl;
     }
     LogAction(ofstream& ceplog, EventRouter& router, vector<PTerm*>& logargs) : Action(ceplog,router)
     {
@@ -193,7 +194,7 @@ class EventAction : public Action
 {
     Event _e;
 public:
-    void operator () ()
+    void act()
     {
     }
     EventAction(ofstream& ceplog, EventRouter& router, vector<PTerm*>& eventargs) : Action(ceplog,router)

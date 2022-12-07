@@ -67,12 +67,17 @@ protected:
     void doActions()
     {
         bool condeval = _condexpr->eval();
-        if ( condeval ) return;
-        _ceplog << "Endof " << intervalstr() << " Seqno " << seqnostr() << " " << _condexpr->str() << " = " << condeval << endl;
-        for(auto aggr:_aggrHandlers)
-            _ceplog << "\t" << aggr->str() << " = " << aggr->eval2str() << endl;
-        for(auto sv:_statevars)
-            _ceplog << "\t" << sv->str() << " = " << sv->eval2str() << endl;
+        bool loginterval = condeval and _tacts.size() != 0 or not condeval and _facts.size() != 0;
+        if ( condeval ) for(auto ta:_tacts) ta->act();
+        else for(auto fa:_facts) fa->act();
+        if ( loginterval )
+        {
+            _ceplog << "Endof " << intervalstr() << " Seqno " << seqnostr() << " " << _condexpr->str() << " = " << condeval << endl;
+            for(auto aggr:_aggrHandlers)
+                _ceplog << "\t" << aggr->str() << " = " << aggr->eval2str() << endl;
+            for(auto sv:_statevars)
+                _ceplog << "\t" << sv->str() << " = " << sv->eval2str() << endl;
+        }
     }
 public:
     void init() { init_(); }
@@ -163,7 +168,7 @@ class IntervalManager
         auto iend = topargs[0]->args()[1];
         auto exprterm = topargs[1];
         auto tactslist = topargs[2];
-        auto factslist = topargs[2];
+        auto factslist = topargs[3];
         auto condexpr = (BoolExpr*) _efactory.pterm2expr(exprterm);
 
         vector<Action*> tacts, facts;
@@ -190,9 +195,9 @@ public:
         string cepdatflnm = basename + ".cep";
         _ceplog.open(ceplogflnm);
         PDb pdb;
-        t_predspec cep2 = {"cep",2};
-        pdb.load(cepdatflnm, {cep2} );
-        auto specs = pdb.get(cep2);
+        t_predspec cep4 = {"cep",4};
+        pdb.load(cepdatflnm, {cep4} );
+        auto specs = pdb.get(cep4);
         for(auto spec:specs) processSpec(spec);
     }
     ~IntervalManager() { for(auto i:_interv) delete i; }
