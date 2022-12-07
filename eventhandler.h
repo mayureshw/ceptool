@@ -10,21 +10,21 @@ typedef int Event; // TODO make it unsigned long?
 class EventHandlerBase
 {
 public:
-    virtual void handleEvent(Event)=0;
+    virtual void handleEvent(Event, unsigned long)=0;
 };
 
 class EventRouter
 {
     map<Event,set<EventHandlerBase*>> _route;
 public:
-    void route(Event e)
+    void route(Event e, unsigned long eseqno)
     {
         auto it = _route.find(e);
         if ( it == _route.end() ) return;
 
         // Important to work on a copy, as the handlers may mutate the set
         set<EventHandlerBase*> sendto = it->second;
-        for( auto h:sendto ) h->handleEvent(e);
+        for( auto h:sendto ) h->handleEvent(e, eseqno);
     }
     void registerH(Event e, EventHandlerBase* h) { _route[e].insert(h); }
     void unregisterH(Event e, EventHandlerBase* h) { _route[e].erase(h); }
@@ -40,12 +40,12 @@ class EventHandler : public EventHandlerBase
 {
     EventRouter& _router;
     Event _e;
-    function<void(Event)> _handler;
+    function<void(Event,unsigned long)> _handler;
 public:
     void start() { _router.registerH(_e, this); }
     void stop() { _router.unregisterH(_e, this); }
-    virtual void handleEvent(Event e) { _handler(e); }
-    EventHandler(EventRouter& router, Event e, function<void(Event)> handler = NULL) :
+    virtual void handleEvent(Event e, unsigned long eseqno) { _handler(e, eseqno); }
+    EventHandler(EventRouter& router, Event e, function<void(Event, unsigned long)> handler = NULL) :
         _router(router), _e(e), _handler(handler) {}
 };
 

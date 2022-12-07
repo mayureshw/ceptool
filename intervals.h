@@ -20,10 +20,17 @@ class Interval
     vector<VoidExpr*> _actions;
     vector<ExprBase*> _aggrHandlers;
     vector<ExprBase*> _statevars;
+    unsigned long _seqstart = 0;
+    unsigned long _seqend = 0;
     // Common handlers for all interval types, in turn call subtype's handler
-    void handleStart(Event e) { handleStart_(e); }
-    void handleEnd(Event e)
+    void handleStart(Event e, unsigned long eseqno)
     {
+        _seqstart = eseqno;
+        handleStart_(e);
+    }
+    void handleEnd(Event e, unsigned long eseqno)
+    {
+        _seqend = eseqno;
         doActions();
         handleEnd_(e);
     }
@@ -36,6 +43,10 @@ protected:
         startInterval();
     }
     virtual void handleEnd_(Event) = 0;
+    string seqnostr()
+    {
+        return "(" + to_string(_seqstart) + "," + to_string(_seqend) + ")";
+    }
     string intervalstr()
     { return "(" + (_start == START ? "START" : to_string(_start)) + "," + to_string(_end) + ")"; }
     void startAggrs() { for(auto ah:_aggrHandlers) ah->start(); }
@@ -56,7 +67,7 @@ protected:
     {
         bool condeval = _condexpr->eval();
         if ( condeval ) return;
-        _ceplog << "Endof " << intervalstr() << " " << _condexpr->str() << " = " << condeval << endl;
+        _ceplog << "Endof " << intervalstr() << " Seqno " << seqnostr() << " " << _condexpr->str() << " = " << condeval << endl;
         for(auto aggr:_aggrHandlers)
             _ceplog << "\t" << aggr->str() << " = " << aggr->eval2str() << endl;
         for(auto sv:_statevars)
@@ -66,8 +77,8 @@ public:
     void init() { init_(); }
     Interval(ofstream& ceplog, Event start, Event end, BoolExpr* condexpr, EventRouter& router) :
         _ceplog(ceplog), _start(start), _end(end), _condexpr(condexpr),
-        _startHandler(router, start, [this](Event e){this->handleStart(e);}),
-        _endHandler(router, end, [this](Event e){this->handleEnd(e);})
+        _startHandler(router, start, [this](Event e, unsigned long eseqno){this->handleStart(e,eseqno);}),
+        _endHandler(router, end, [this](Event e, unsigned long eseqno){this->handleEnd(e, eseqno);})
     {
         _condexpr->aggregators( _aggrHandlers );
         _condexpr->statevars( _statevars );
@@ -165,7 +176,7 @@ class IntervalManager
         _interv.push_back(i);
     }
 public:
-    void route(Event e) { _router.route(e); }
+    void route(Event e, unsigned long eseqno) { _router.route(e, eseqno); }
     IntervalManager(string basename, CEPStateIf* stateif) : _stateif(stateif)
     {
         string ceplogflnm = basename + ".cep.log";

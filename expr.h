@@ -81,11 +81,11 @@ template <typename T> class Aggregator : public Expr<T>
     EventHandler _handler;
 public:
     bool isAggregator() { return true; }
-    virtual void handleEvent(Event e) = 0;
+    virtual void handleEvent(Event e, unsigned long) = 0;
     void start() { _handler.start(); }
     void stop() { _handler.stop(); }
     Aggregator(EventRouter& router, Event e) :
-        _handler(router, e, [this](Event e) {this->handleEvent(e);}) {}
+        _handler(router, e, [this](Event e, unsigned long eseqno) {this->handleEvent(e,eseqno);}) {}
 };
 
 #define ARG(TYP,INDX) ((Expr<TYP>*)_args[INDX])
@@ -130,7 +130,7 @@ class CEPCount : public Aggregator<int> // TODO: <unsigned long>
     Event _e;
 public:
     string str() { return "#" + to_string(_e); }
-    void handleEvent(Event) { _count++; }
+    void handleEvent(Event,unsigned long) { _count++; }
     void reset() { _count = 0; }
     //unsigned long eval() { return _count; } // TODO
     int eval() { return _count; }
