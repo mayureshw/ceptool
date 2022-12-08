@@ -166,6 +166,14 @@ class Action
 protected:
     ofstream& _ceplog;
     EventRouter& _router;
+    void arityCheck(string functor, int arity, vector<PTerm*>& args)
+    {
+        if ( args.size() != arity )
+        {
+            cout << functor << " expects " << arity << " argument(s), got " << args.size() << endl;
+            exit(1);
+        }
+    }
 public:
     virtual void act() = 0;
     Action(ofstream& ceplog, EventRouter& router) : _ceplog(ceplog), _router(router) {}
@@ -179,14 +187,10 @@ public:
     {
         _ceplog << _msg << endl;
     }
-    LogAction(ofstream& ceplog, EventRouter& router, vector<PTerm*>& logargs) : Action(ceplog,router)
+    LogAction(ofstream& ceplog, EventRouter& router, vector<PTerm*>& args) : Action(ceplog,router)
     {
-        if ( logargs.size() != 1 )
-        {
-            cout << "log expects 1 argument, got " << logargs.size() << endl;
-            exit(1);
-        }
-        _msg = logargs[0]->asString();
+        arityCheck("log",1,args);
+        _msg = args[0]->asString();
     }
 };
 
@@ -196,9 +200,12 @@ class EventAction : public Action
 public:
     void act()
     {
+        _router.route(_e,0); // seqno 0 for generated events
     }
-    EventAction(ofstream& ceplog, EventRouter& router, vector<PTerm*>& eventargs) : Action(ceplog,router)
+    EventAction(ofstream& ceplog, EventRouter& router, vector<PTerm*>& args) : Action(ceplog,router)
     {
+        arityCheck("event",1,args);
+        _e = args[0]->asInt();
     }
 };
 
