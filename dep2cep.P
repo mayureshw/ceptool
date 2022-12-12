@@ -5,9 +5,9 @@
 % dep2cep(+Deprule, -Interval, -Condition)
 :- export dep2cep/3.
 
-dep2cep( L -> R, ('START',R), C ):- atomic(R), expandCond(L,1,C).
-dep2cep( L -> R, (L,L),       C ):- atomic(L), expandCond(R,1,C).
-dep2cep( L -> R, (R,R),       C ):- atomic(R), expandCond(L,1,C).
+dep2cep( L -> R, itill(R), C ):- atomic(R), expandCond(L,1,C).
+dep2cep( L -> R, iself(L), C ):- atomic(L), expandCond(R,1,C).
+dep2cep( L -> R, iself(R), C ):- atomic(R), expandCond(L,1,C).
 
 expandCond(E, N, #E == N):- atomic(E).
 expandCond(E1^E2, N, C1^C2):- expandCond(E1, N, C1), expandCond(E2, N, C2).
