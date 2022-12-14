@@ -98,7 +98,7 @@ public:
         auto topargs = _ispec->args();
 
         auto condterm = topargs[1];
-        auto _condexpr = (BoolExpr*) efactory.pterm2expr(condterm);
+        _condexpr = (BoolExpr*) efactory.pterm2expr(condterm);
         if ( _condexpr->etyp() != bool__ )
         {
             cout << "Interval condition must be a boolean expression" << endl;
