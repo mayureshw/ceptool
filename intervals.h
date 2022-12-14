@@ -8,14 +8,10 @@
 #include "expr.h"
 #include "xsb2cpp.h"
 
-typedef enum { START = INT8_MIN } SymEvent;
-#define SYME(E) { #E, E }
-
-
 class Interval
 {
     ofstream& _ceplog;
-    Event _start, _end;
+    EventRouter& _router;
     BoolExpr *_condexpr;
     vector<Action*> _tacts;
     vector<Action*> _facts;
@@ -35,35 +31,6 @@ class Interval
         doActions();
         handleEnd_(e);
     }
-protected:
-    EventHandler _startHandler, _endHandler;
-    virtual void init_() { _startHandler.start(); }
-    virtual void handleStart_(Event e)
-    {
-        _startHandler.stop();
-        startInterval();
-    }
-    virtual void handleEnd_(Event) = 0;
-    string seqnostr()
-    {
-        return "(" + to_string(_seqstart) + "," + to_string(_seqend) + ")";
-    }
-    string intervalstr()
-    { return "(" + (_start == START ? "START" : to_string(_start)) + "," + to_string(_end) + ")"; }
-    void startAggrs() { for(auto ah:_aggrHandlers) ah->start(); }
-    void stopAggrs() { for(auto ah:_aggrHandlers) ah->stop(); }
-    void resetAggrs() { for(auto ah:_aggrHandlers) ah->reset(); }
-    void startInterval()
-    {
-        _endHandler.start();
-        startAggrs();
-        resetAggrs();
-    }
-    void stopInterval()
-    {
-        _endHandler.stop();
-        stopAggrs();
-    }
     void doActions()
     {
         bool condeval = _condexpr->eval();
@@ -79,20 +46,85 @@ protected:
                 _ceplog << "\t" << sv->str() << " = " << sv->eval2str() << endl;
         }
     }
-public:
-    void init() { init_(); }
-    Interval(ofstream& ceplog, Event start, Event end, BoolExpr* condexpr, vector<Action*> tacts, vector<Action*> facts, EventRouter& router) :
-        _ceplog(ceplog), _start(start), _end(end), _condexpr(condexpr), _tacts(tacts), _facts(facts),
-        _startHandler(router, start, [this](Event e, unsigned long eseqno){this->handleStart(e,eseqno);}),
-        _endHandler(router, end, [this](Event e, unsigned long eseqno){this->handleEnd(e, eseqno);})
+protected:
+    PTerm *_ispec;
+    EventHandler *_startHandler = NULL;
+    EventHandler *_endHandler = NULL;
+    vector<PTerm*>& iargs() { return _ispec->args()[0]->args(); }
+    void setStartHandler(Event e)
     {
+        _startHandler = new EventHandler(_router, e, [this](Event e, unsigned long eseqno){this->handleStart(e,eseqno);});
+    }
+    void setEndHandler(Event e)
+    {
+        _endHandler = new EventHandler(_router, e, [this](Event e, unsigned long eseqno){this->handleEnd(e, eseqno);});
+    }
+    virtual void init_() { _startHandler->start(); }
+    virtual void handleStart_(Event e)
+    {
+        _startHandler->stop();
+        startInterval();
+    }
+    virtual void handleEnd_(Event) = 0;
+    string seqnostr()
+    {
+        return "(" + to_string(_seqstart) + "," + to_string(_seqend) + ")";
+    }
+    virtual string intervalstr()=0;
+    void startAggrs() { for(auto ah:_aggrHandlers) ah->start(); }
+    void stopAggrs() { for(auto ah:_aggrHandlers) ah->stop(); }
+    void resetAggrs() { for(auto ah:_aggrHandlers) ah->reset(); }
+    void startInterval()
+    {
+        _endHandler->start();
+        startAggrs();
+        resetAggrs();
+    }
+    void stopInterval()
+    {
+        _endHandler->stop();
+        stopAggrs();
+    }
+    virtual void setIntervalDetls()=0;
+public:
+    void init()
+    {
+        setIntervalDetls();
+        init_();
+    }
+    Interval(PTerm* ispec, ofstream& ceplog, EventRouter& router, ExprFactory& efactory) :
+        _ispec(ispec), _ceplog(ceplog), _router(router)
+    {
+        auto topargs = _ispec->args();
+
+        auto condterm = topargs[1];
+        auto _condexpr = (BoolExpr*) efactory.pterm2expr(condterm);
+        if ( _condexpr->etyp() != bool__ )
+        {
+            cout << "Interval condition must be a boolean expression" << endl;
+            exit(1);
+        }
+
         _condexpr->aggregators( _aggrHandlers );
         _condexpr->statevars( _statevars );
+
+        auto tactslist = topargs[2];
+        for(auto t:tactslist->args()) _tacts.push_back( efactory.pterm2action(t) );
+
+        auto factslist = topargs[3];
+        for(auto t:factslist->args()) _facts.push_back( efactory.pterm2action(t) );
+    }
+    virtual ~Interval()
+    {
+        if ( _startHandler ) delete _startHandler;
+        if ( _endHandler ) delete _endHandler;
     }
 };
 
 // Guidelines for writing Interval subclasses
-// - 3 handlers are needed: init_, handleStart_, handleEnd_
+// - 4 handlers are needed: setIntervalDetls, init_, handleStart_, handleEnd_
+// setIntervalDetls mainly sets event handlers, but it may do more custom
+// things as more interval types get added.
 // - Common actions are in the base class, code only the remaining actions
 // - In each one of them check the following:
 //   - Any change in state of _startHandler
@@ -102,30 +134,56 @@ public:
 // Now tidy it up all:
 //   - If there is similar handler for several classes lift it into base
 //   - If some action sequence repeats across handlers, make it a support function in base
-class AutostartInterval : public Interval
+class Interval_itill : public Interval
 {
 using Interval::Interval;
+    Event _e;
 protected:
+    string intervalstr() { return "itill(" + to_string(_e) + ")"; }
+    void setIntervalDetls()
+    {
+        auto eterm = iargs()[0];
+        _e = eterm->asInt();
+        setEndHandler(_e);
+    }
     void init_() { startInterval(); };
     void handleEnd_(Event e) { stopInterval(); }
 };
 
-class SelfInterval : public Interval
+class Interval_iself : public Interval
 {
 using Interval::Interval;
+    Event _e;
 protected:
+    string intervalstr() { return "iself(" + to_string(_e) + ")"; }
+    void setIntervalDetls()
+    {
+        auto eterm = iargs()[0];
+        _e = eterm->asInt();
+        setStartHandler(_e);
+        setEndHandler(_e);
+    }
     void handleEnd_(Event e) { resetAggrs(); }
 };
 
-class OtherInterval : public Interval
+class Interval_iab : public Interval
 {
 using Interval::Interval;
+    Event _a, _b;
 protected:
-    void handleEnd_(Event e) { _startHandler.start(); stopInterval(); }
+    string intervalstr() { return "iab(" + to_string(_a) + "," + to_string(_b) + ")"; }
+    void setIntervalDetls()
+    {
+        auto eargs = iargs();
+        _a = eargs[0]->asInt();
+        _b = eargs[1]->asInt();
+        setStartHandler(_a);
+        setEndHandler(_b);
+    }
+    void handleEnd_(Event e) { _startHandler->start(); stopInterval(); }
 };
 
-#define NEWINTERVAL(TYP) (Interval*) new TYP(_ceplog, estrt, eend, condexpr, tacts, facts, _router)
-
+#define INTERVALMAP(TYP) { #TYP, [this] ( PTerm* ispec ) { return new Interval_##TYP(ispec, _ceplog, _router, _efactory); } }
 class IntervalManager
 {
     CEPStateIf *_stateif;
@@ -133,60 +191,13 @@ class IntervalManager
     EventRouter _router;
     ExprFactory _efactory = {_router, _stateif, _ceplog};
     vector<Interval*> _interv;
-    const map<string,SymEvent> _symevents =
-        {
-            SYME(START),
-        };
-    int term2event(PTerm *pterm)
+    map<string,function<Interval*(PTerm*)>> _intervalf =
     {
-        if ( pterm->isInt() ) return AS(int, pterm);
-        else if ( pterm->isString() )
-        {
-            auto estr = AS(string, pterm);
-            auto it = _symevents.find(estr);
-            if ( it == _symevents.end() )
-            {
-                cout << "Invalid symbolic event string " << estr << endl;
-                exit(1);
-            }
-            else
-            {
-                return it->second;
-            }
-        }
-        else
-        {
-            cout << "Event can be string or int " << pterm->tostr() << endl;
-            exit(1);
-        }
-    }
+        INTERVALMAP(itill),
+        INTERVALMAP(iself),
+        INTERVALMAP(iab),
+    };
 
-    void processSpec(PTerm* spec)
-    {
-        auto topargs = spec->args();
-        auto istrt = topargs[0]->args()[0];
-        auto iend = topargs[0]->args()[1];
-        auto exprterm = topargs[1];
-        auto tactslist = topargs[2];
-        auto factslist = topargs[3];
-        auto condexpr = (BoolExpr*) _efactory.pterm2expr(exprterm);
-
-        vector<Action*> tacts, facts;
-        for(auto t:tactslist->args()) tacts.push_back( _efactory.pterm2action(t) );
-        for(auto t:factslist->args()) facts.push_back( _efactory.pterm2action(t) );
-
-        int estrt = term2event(istrt);
-        int eend = term2event(iend);
-        if ( condexpr->etyp() != bool__ )
-        {
-            cout << "Interval condition must be a boolean expression" << endl;
-            exit(1);
-        }
-        auto i = estrt == START ? NEWINTERVAL(AutostartInterval) :
-            estrt == eend ? NEWINTERVAL(SelfInterval) : NEWINTERVAL(OtherInterval);
-        i->init();
-        _interv.push_back(i);
-    }
 public:
     void route(Event e, unsigned long eseqno) { _router.route(e, eseqno); }
     IntervalManager(string basename, CEPStateIf* stateif) : _stateif(stateif)
@@ -198,7 +209,19 @@ public:
         t_predspec cep4 = {"cep",4};
         pdb.load(cepdatflnm, {cep4} );
         auto specs = pdb.get(cep4);
-        for(auto spec:specs) processSpec(spec);
+        for(auto spec:specs)
+        {
+            auto ityp = spec->args()[0]->functor();
+            auto it = _intervalf.find( ityp );
+            if ( it == _intervalf.end() )
+            {
+                cout << "Unknown interval type " << ityp << endl;
+                exit(1);
+            }
+            auto i = (Interval*) it->second(spec);
+            i->init();
+            _interv.push_back(i);
+        }
     }
     ~IntervalManager() { for(auto i:_interv) delete i; }
 };
