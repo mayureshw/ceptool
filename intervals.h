@@ -17,8 +17,6 @@ class Interval
     vector<Action*> _facts;
     vector<ExprBase*> _aggrHandlers;
     vector<ExprBase*> _statevars;
-    unsigned long _seqstart = 0;
-    unsigned long _seqend = 0;
     // Common handlers for all interval types, in turn call subtype's handler
     void handleStart(Event e, unsigned long eseqno)
     {
@@ -47,6 +45,8 @@ class Interval
         }
     }
 protected:
+    unsigned long _seqstart = 0;
+    unsigned long _seqend = 0;
     PTerm *_ispec;
     EventHandler *_startHandler = NULL;
     EventHandler *_endHandler = NULL;
@@ -66,7 +66,7 @@ protected:
         startInterval();
     }
     virtual void handleEnd_(Event) = 0;
-    string seqnostr()
+    virtual string seqnostr()
     {
         return "(" + to_string(_seqstart) + "," + to_string(_seqend) + ")";
     }
@@ -183,6 +183,23 @@ protected:
     void handleEnd_(Event e) { _startHandler->start(); stopInterval(); }
 };
 
+class Interval_iev : public Interval
+{
+using Interval::Interval;
+    Event _e;
+protected:
+    string seqnostr() { return "@" + to_string(_seqend); }
+    string intervalstr() { return "iev(" + to_string(_e) + ")"; }
+    void setIntervalDetls()
+    {
+        auto eterm = iargs()[0];
+        _e = eterm->asInt();
+        setEndHandler(_e);
+    }
+    void init_() { _endHandler->start(); }
+    void handleEnd_(Event e) { }
+};
+
 #define INTERVALMAP(TYP) { #TYP, [this] ( PTerm* ispec ) { return new Interval_##TYP(ispec, _ceplog, _router, _efactory); } }
 class IntervalManager
 {
@@ -196,6 +213,7 @@ class IntervalManager
         INTERVALMAP(itill),
         INTERVALMAP(iself),
         INTERVALMAP(iab),
+        INTERVALMAP(iev),
     };
 
 public:
