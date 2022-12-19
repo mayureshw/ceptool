@@ -150,54 +150,71 @@ public:
 class Action
 {
 protected:
+    vector<PTerm*>& _args;
     ofstream& _ceplog;
     EventRouter& _router;
-    void arityCheck(string functor, int arity, vector<PTerm*>& args)
+    CEPStateIf *_stateif;
+    void arityCheck(string functor, int arity)
     {
-        if ( args.size() != arity )
+        if ( _args.size() != arity )
         {
-            cout << functor << " expects " << arity << " argument(s), got " << args.size() << endl;
+            cout << functor << " expects " << arity << " argument(s), got " << _args.size() << endl;
             exit(1);
         }
     }
 public:
     virtual void act() = 0;
-    Action(ofstream& ceplog, EventRouter& router) : _ceplog(ceplog), _router(router) {}
+    virtual void init() = 0;
+    Action(ofstream& ceplog, EventRouter& router, CEPStateIf *stateif, vector<PTerm*>& args) : _ceplog(ceplog), _router(router), _stateif(stateif), _args(args) {}
 };
 
 class LogAction : public Action
 {
+using Action::Action;
     string _msg;
 public:
     void act()
     {
         _ceplog << _msg << endl;
     }
-    LogAction(ofstream& ceplog, EventRouter& router, vector<PTerm*>& args) : Action(ceplog,router)
+    void init()
     {
-        arityCheck("log",1,args);
-        _msg = args[0]->asString();
+        arityCheck("log",1);
+        _msg = _args[0]->asString();
     }
 };
 
 class EventAction : public Action
 {
+using Action::Action;
     Event _e;
 public:
     void act()
     {
         _router.route(_e,0); // seqno 0 for generated events
     }
-    EventAction(ofstream& ceplog, EventRouter& router, vector<PTerm*>& args) : Action(ceplog,router)
+    void init()
     {
-        arityCheck("event",1,args);
-        _e = args[0]->asInt();
+        arityCheck("event",1);
+        _e = _args[0]->asInt();
+    }
+};
+
+class QuitAction : public Action
+{
+using Action::Action;
+public:
+    void init() {}
+    void act()
+    {
+        _ceplog << "Performing Quit Action" << endl;
+        _stateif->quit();
     }
 };
 
 #define PTERM2ATOM(TYP) new Const<TYP>(AS(TYP,pterm))
 
-#define ACTIONMAP(FUNCTOR,CLASS) { #FUNCTOR , [this](vector<PTerm*>& v) { return new CLASS(_ceplog,_router,v); } }
+#define ACTIONMAP(FUNCTOR,CLASS) { #FUNCTOR , [this](vector<PTerm*>& v) { return new CLASS(_ceplog,_router,_stateif,v); } }
 
 // TODO manager pointers, may be store and delete them in the end
 class ExprFactory
@@ -261,8 +278,9 @@ class ExprFactory
     }
     map<string,function<Action*(vector<PTerm*>&)>> _actionf =
         {
-            ACTIONMAP(log,   LogAction),
-            ACTIONMAP(event, EventAction),
+            ACTIONMAP( log,   LogAction   ),
+            ACTIONMAP( event, EventAction ),
+            ACTIONMAP( quit,  QuitAction  ),
         };
 public:
     ExprBase* pterm2expr(PTerm* pterm)
@@ -281,6 +299,7 @@ public:
             exit(1);
         }
         auto action = it->second(pterm->args());
+        action->init(); // To keep constuctor common, init post construction
         _actionv.push_back(action);
         return action;
     }
