@@ -79,23 +79,19 @@ public:
 #define ARG(TYP,INDX) ((Expr<TYP>*)_args[INDX])
 #define EVALAS(TYP,INDX) ARG(TYP,INDX)->eval()
 #define BINOPEXPR(T1,T2,OP) EVALAS(T1,0) OP EVALAS(T2,1)
-#define BINOPSTR(T1,T2,OP) "( " + ARG(T1,0)->str() + OP + ARG(T2,1)->str() + " )"
+#define BINOPSTR(T1,T2,OP) "( " + ARG(T1,0)->str() + " " + OP + " " + ARG(T2,1)->str() + " )"
 
-template <typename T1, typename T2> class CEPXor : public Expr<bool>
-{
-using Expr<bool>::Expr;
-public:
-    string str() { return BINOPSTR(T1,T2," ^ "); }
-    bool eval() { return BINOPEXPR(T1,T2,^); }
+#define BOOLOPCLASS(CLS,OP) \
+template <typename T1, typename T2> class CEP##CLS : public Expr<bool> \
+{ \
+using Expr<bool>::Expr; \
+public: \
+    string str() { return BINOPSTR(T1,T2,#OP); } \
+    bool eval() { return BINOPEXPR(T1,T2,OP); } \
 };
 
-template <typename T1, typename T2> class CEPEq : public Expr<bool>
-{
-using Expr<bool>::Expr;
-public:
-    string str() { return BINOPSTR(T1,T2," == "); }
-    bool eval() { return BINOPEXPR(T1,T2,==); }
-};
+BOOLOPCLASS( Xor, ^  )
+BOOLOPCLASS( Eq,  == )
 
 template <typename T> class Const : public Expr<T>
 {
