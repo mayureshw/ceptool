@@ -43,14 +43,19 @@ stateexprs([
 
 % Supported functor, the C++ class they map to and their arity
 functormap([
-    ( ^  , 'CEPXor'   , 2 ),
-    ( == , 'CEPEq'    , 2 ),
-    ( #  , 'CEPCount' , 1 ),
-    ( *  , 'CEPReg'   , 1 )
+    ( ^    , 'CEPXor'   , 2 ),
+    ( and  , 'CEPAnd'   , 2 ),
+    ( or   , 'CEPOr'    , 2 ),
+    ( ==   , 'CEPEq'    , 2 ),
+    ( #    , 'CEPCount' , 1 ),
+    ( *    , 'CEPReg'   , 1 )
     ]).
 
+logOpClasses([ 'CEPXor', 'CEPAnd', 'CEPOr' ]).
+logOpClass(LogopC) :- logOpClasses(LCs),  member(LogopC,LCs).
+
 % For a class, supported argument types
-signature('CEPXor',   [ bool, bool ]).
+signature(LogOpCls,   [ bool, bool ]) :- logOpClass(LogOpCls).
 signature('CEPEq',    [ N1, N2 ]) :- comparable(N1, N2).
 signature('CEPCount', [ int ]).
 signature('CEPReg',   [ N ]) :- numeric(N).

@@ -92,6 +92,8 @@ public: \
 
 BOOLOPCLASS( Xor, ^  )
 BOOLOPCLASS( Eq,  == )
+BOOLOPCLASS( And, &  )
+BOOLOPCLASS( Or,  |  )
 
 template <typename T> class Const : public Expr<T>
 {
