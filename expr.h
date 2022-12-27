@@ -81,19 +81,19 @@ public:
 #define BINOPEXPR(T1,T2,OP) EVALAS(T1,0) OP EVALAS(T2,1)
 #define BINOPSTR(T1,T2,OP) "( " + ARG(T1,0)->str() + " " + OP + " " + ARG(T2,1)->str() + " )"
 
-#define BOOLOPCLASS(CLS,OP) \
+#define BOOLOPCLASS(CLS,CEPOP,CPPOP) \
 template <typename T1, typename T2> class CEP##CLS : public Expr<bool> \
 { \
 using Expr<bool>::Expr; \
 public: \
-    string str() { return BINOPSTR(T1,T2,#OP); } \
-    bool eval() { return BINOPEXPR(T1,T2,OP); } \
+    string str() { return BINOPSTR(T1,T2,#CEPOP); } \
+    bool eval() { return BINOPEXPR(T1,T2,CPPOP); } \
 };
 
-BOOLOPCLASS( Xor, ^  )
-BOOLOPCLASS( Eq,  == )
-BOOLOPCLASS( And, &  )
-BOOLOPCLASS( Or,  |  )
+BOOLOPCLASS( Xor , ^   , ^  )
+BOOLOPCLASS( Eq  , ==  , == )
+BOOLOPCLASS( And , and , && )
+BOOLOPCLASS( Or  , or  , || )
 
 template <typename T> class Const : public Expr<T>
 {
