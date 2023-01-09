@@ -5,6 +5,7 @@
 #include <functional>
 #include "xsb2cpp.h"
 #include "eventhandler.h"
+#include "cepbase.h"
 #include "exprf.h"
 #include "stateif.h"
 
@@ -148,6 +149,7 @@ public:
 class Action
 {
 protected:
+    IntervalBase *_interval;
     vector<PTerm*>& _args;
     ofstream& _ceplog;
     EventRouter& _router;
@@ -163,7 +165,8 @@ protected:
 public:
     virtual void act() = 0;
     virtual void init() = 0;
-    Action(ofstream& ceplog, EventRouter& router, CEPStateIf *stateif, vector<PTerm*>& args) : _ceplog(ceplog), _router(router), _stateif(stateif), _args(args) {}
+    Action(ofstream& ceplog, EventRouter& router, CEPStateIf *stateif, vector<PTerm*>& args, IntervalBase *interval)
+        : _ceplog(ceplog), _router(router), _stateif(stateif), _args(args), _interval(interval) {}
 };
 
 class LogAction : public Action
@@ -210,9 +213,17 @@ public:
     }
 };
 
+class ExtendAction : public Action
+{
+using Action::Action;
+public:
+    void init() {}
+    void act() { _interval->extend(); }
+};
+
 #define PTERM2ATOM(TYP) new Const<TYP>(AS(TYP,pterm))
 
-#define ACTIONMAP(FUNCTOR,CLASS) { #FUNCTOR , [this](vector<PTerm*>& v) { return new CLASS(_ceplog,_router,_stateif,v); } }
+#define ACTIONMAP(FUNCTOR,CLASS) { #FUNCTOR , [this](vector<PTerm*>& v, IntervalBase* interval) { return new CLASS(_ceplog,_router,_stateif,v,interval); } }
 
 // TODO manager pointers, may be store and delete them in the end
 class ExprFactory
@@ -274,11 +285,12 @@ class ExprFactory
 
         }
     }
-    map<string,function<Action*(vector<PTerm*>&)>> _actionf =
+    map<string,function<Action*(vector<PTerm*>&,IntervalBase*)>> _actionf =
         {
-            ACTIONMAP( log,   LogAction   ),
-            ACTIONMAP( event, EventAction ),
-            ACTIONMAP( quit,  QuitAction  ),
+            ACTIONMAP( log,    LogAction    ),
+            ACTIONMAP( event,  EventAction  ),
+            ACTIONMAP( quit,   QuitAction   ),
+            ACTIONMAP( extend, ExtendAction ),
         };
 public:
     ExprBase* pterm2expr(PTerm* pterm)
@@ -287,7 +299,7 @@ public:
         _exprv.push_back(expr);
         return expr;
     }
-    Action* pterm2action(PTerm* pterm)
+    Action* pterm2action(PTerm* pterm, IntervalBase *interval)
     {
         auto functor = pterm->functor();
         auto it = _actionf.find(functor);
@@ -296,7 +308,7 @@ public:
             cout << "Unknown action type: " << functor << endl;
             exit(1);
         }
-        auto action = it->second(pterm->args());
+        auto action = it->second(pterm->args(), interval);
         action->init(); // To keep constuctor common, init post construction
         _actionv.push_back(action);
         return action;

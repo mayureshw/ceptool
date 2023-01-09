@@ -5,10 +5,11 @@
 #include <map>
 #include <fstream>
 #include <iostream>
+#include "cepbase.h"
 #include "expr.h"
 #include "xsb2cpp.h"
 
-class Interval
+class Interval : public IntervalBase
 {
     ofstream& _ceplog;
     EventRouter& _router;
@@ -27,7 +28,8 @@ class Interval
     {
         _seqend = eseqno;
         doActions();
-        handleEnd_(e);
+        if ( extendRequested() ) extended();
+        else handleEnd_(e);
     }
     void doActions()
     {
@@ -109,10 +111,10 @@ public:
         _condexpr->statevars( _statevars );
 
         auto tactslist = topargs[2];
-        for(auto t:tactslist->args()) _tacts.push_back( efactory.pterm2action(t) );
+        for(auto t:tactslist->args()) _tacts.push_back( efactory.pterm2action(t,this) );
 
         auto factslist = topargs[3];
-        for(auto t:factslist->args()) _facts.push_back( efactory.pterm2action(t) );
+        for(auto t:factslist->args()) _facts.push_back( efactory.pterm2action(t,this) );
     }
     virtual ~Interval()
     {
