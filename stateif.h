@@ -1,7 +1,9 @@
 #ifndef _STATEIF_H
 #define _STATEIF_H
 
+#include <vector>
 #include "exprf.h"
+using namespace std;
 
 // Macro recommended for the implementor of stateif interface
 #define TYPES2ETYP \
