@@ -1,6 +1,7 @@
 #ifndef _STATEIF_H
 #define _STATEIF_H
 
+#include <cstdint>
 #include <vector>
 #include "exprf.h"
 using namespace std;
